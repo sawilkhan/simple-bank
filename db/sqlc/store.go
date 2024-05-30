@@ -67,7 +67,6 @@ type TransferTxResult struct{
 //It creates a transfer record, adds account entries, and updates account's balance, within a single database transaction
 func (store *SQLStore) TransferTxn(ctx context.Context, arg TransferTxParams) (TransferTxResult, error){
 	var result TransferTxResult
-
 	err := store.execTx(ctx, func (q *Queries) error{
 		var err error
 
