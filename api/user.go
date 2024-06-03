@@ -6,8 +6,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/lib/pq"
-	_ "github.com/lib/pq"
+	//_ "github.com/lib/pq"
 	db "github.com/sawilkhan/simple-bank/db/sqlc"
 	"github.com/sawilkhan/simple-bank/util"
 )
