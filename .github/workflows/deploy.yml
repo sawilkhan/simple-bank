@@ -19,24 +19,45 @@ jobs:
     - name: Checkout repo
       uses: actions/checkout@v3
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
+    - name: Set up Docker buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Login to Google Cloud
+      id: gcloud-auth
+      uses: google-github-actions/auth@v1
       with:
-        role-to-assume: arn:aws:iam::533267292044:role/github.to.aws.oidc
-        aws-region: ap-south-1
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-    - name: Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v2
-
-    - name: Load secrets and save to app.env
-      run: aws secretsmanager get-secret-value --secret-id simple_bank --query SecretString --output text | jq -r 'to_entries|map("\(.key)=\(.value)")|.[]' > app.env
-
-    - name: Build, tag, and push docker image to Amazon ECR
-      env:
-        REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        REPOSITORY: simplebank
-        IMAGE_TAG: ${{ github.sha }}
+    - name: Configure Docker to use gcloud as a credential helper
       run: |
-        docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG .
-        docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
+        gcloud auth configure-docker
+
+    - name: Build and push Docker image
+      run: |
+        docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/simplebank:${{ github.sha }} .
+        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/simplebank:${{ github.sha }}
+
+    - name: Set image digest output
+      id: image-digest
+      run: echo "::set-output name=digest::$(docker inspect --format='{{index .RepoDigests 0}}' gcr.io/${{ secrets.GCP_PROJECT_ID }}/simplebank:${{ github.sha }})"
+    # - name: Configure AWS credentials
+    #   uses: aws-actions/configure-aws-credentials@v4
+    #   with:
+    #     role-to-assume: arn:aws:iam::533267292044:role/github.to.aws.oidc
+    #     aws-region: ap-south-1
+
+    # - name: Login to Amazon ECR
+    #   id: login-ecr
+    #   uses: aws-actions/amazon-ecr-login@v2
+
+    # - name: Load secrets and save to app.env
+    #   run: aws secretsmanager get-secret-value --secret-id simple_bank --query SecretString --output text | jq -r 'to_entries|map("\(.key)=\(.value)")|.[]' > app.env
+
+    # - name: Build, tag, and push docker image to Amazon ECR
+    #   env:
+    #     REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+    #     REPOSITORY: simplebank
+    #     IMAGE_TAG: ${{ github.sha }}
+    #   run: |
+    #     docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG .
+    #     docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
